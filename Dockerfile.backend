@@ -1,0 +1,50 @@
+# Multi-stage Dockerfile for FastAPI Backend
+
+# Stage 1: Build & install dependencies
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install build tools if any C-extensions are needed
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: Final minimal runtime image
+FROM python:3.12-slim AS runner
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/root/.local/bin:$PATH \
+    APP_HOST=0.0.0.0 \
+    APP_PORT=8000
+
+# Copy installed Python packages from builder stage
+COPY --from=builder /root/.local /root/.local
+
+# Copy application source code
+COPY api/ ./api/
+COPY agents/ ./agents/
+COPY orchestrator/ ./orchestrator/
+COPY services/ ./services/
+COPY storage/ ./storage/
+COPY tools/ ./tools/
+COPY skills/ ./skills/
+COPY local_agent/ ./local_agent/
+COPY run_backend.py .
+
+# Create directory for SQLite database storage
+RUN mkdir -p /app/data
+
+EXPOSE 8000
+
+# Launch Uvicorn in production mode
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
