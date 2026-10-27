@@ -17,10 +17,14 @@ if __name__ == "__main__":
         except Exception:
             pass
 
+    import os
+    port = int(os.getenv("PORT") or os.getenv("APP_PORT") or 8000)
+    host = os.getenv("APP_HOST", "0.0.0.0")
+
     config = uvicorn.Config(
         app,
-        host="0.0.0.0",
-        port=8000,
+        host=host,
+        port=port,
         log_level="info",
         loop="asyncio",
     )
